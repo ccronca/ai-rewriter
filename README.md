@@ -13,6 +13,8 @@ Runs as a background service with clipboard-based hotkey integration.
 
 ## Prerequisites
 
+**Note:** This setup has been tested on Fedora 43. Other Linux distributions may require adjustments.
+
 - Python 3.14+ (or your installed Python version)
 - [uv](https://github.com/astral-sh/uv) - Fast Python package installer
 - `wl-paste` and `wl-copy` (for Wayland clipboard) or `xclip` (for X11)
@@ -24,8 +26,22 @@ Runs as a background service with clipboard-based hotkey integration.
 
 1. Install uv if not already installed:
 
+**Option A: Package Manager (Recommended for Fedora/RHEL)**
+```bash
+sudo dnf install uv
+```
+
+**Option B: Standalone Installer**
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+After installation, verify the path:
+```bash
+which uv
+# Common locations:
+# /usr/bin/uv (package manager)
+# ~/.cargo/bin/uv (standalone installer)
 ```
 
 2. Clone repo:
@@ -93,7 +109,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/path/to/ai-rewriter
 EnvironmentFile=/path/to/ai-rewriter/.env
-ExecStart=/usr/local/bin/uv run uvicorn src.main:app --host 127.0.0.1 --port ${PORT}
+ExecStart=/usr/bin/uv run python -m uvicorn src.main:app --host 127.0.0.1 --port ${PORT}
 Restart=always
 RestartSec=5
 
@@ -101,10 +117,14 @@ RestartSec=5
 WantedBy=default.target
 ```
 
-**Note:** Replace the following paths:
+**Important:** Replace the following paths:
 - `WorkingDirectory` - Full path to your ai-rewriter directory
 - `EnvironmentFile` - Full path to your `.env` file
-- `ExecStart` - Path to `uv` binary (find with `which uv`)
+- `ExecStart` - Update the `uv` path based on your installation:
+  - `/usr/bin/uv` (if installed via package manager)
+  - `~/.cargo/bin/uv` (if installed via standalone installer)
+
+**Note:** The `python -m uvicorn` syntax is required for `uv run` to properly find the uvicorn module.
 
 4. Reload systemd, enable, and start the service:
 
@@ -127,6 +147,23 @@ journalctl --user -u ai-rewriter.service -f
 ```
 
 Once enabled, the service will **automatically start on login** and run in the background.
+
+### Troubleshooting Systemd Service
+
+**Error: "Unable to locate executable: /usr/local/bin/uv"**
+- Your `uv` is installed at a different location
+- Find the correct path: `which uv`
+- Update `ExecStart` in the service file with the correct path
+
+**Error: "Failed to spawn: uvicorn"**
+- Make sure you're using `python -m uvicorn` syntax, not just `uvicorn`
+- Correct: `uv run python -m uvicorn src.main:app ...`
+- Incorrect: `uv run uvicorn src.main:app ...`
+
+**Service fails to start at boot**
+- If using standalone installer (`~/.cargo/bin/uv`), systemd might not find it in the PATH
+- Consider installing via package manager instead: `sudo dnf install uv`
+- Or use absolute path to the venv Python: `ExecStart=/full/path/to/ai-rewriter/.venv/bin/uvicorn src.main:app --host 127.0.0.1 --port ${PORT}`
 
 ---
 
