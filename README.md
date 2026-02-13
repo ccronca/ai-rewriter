@@ -62,6 +62,7 @@ Edit `.env`:
 ```bash
 GEMINI_API_KEY=your_actual_api_key_here
 PORT=8787  # Optional, defaults to 8787
+ENABLE_RELOAD=false  # Set to true for development mode (auto-reload on code changes)
 ```
 
 4. Install dependencies with uv:
@@ -109,7 +110,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/path/to/ai-rewriter
 EnvironmentFile=/path/to/ai-rewriter/.env
-ExecStart=/usr/bin/uv run python -m uvicorn src.main:app --host 127.0.0.1 --port ${PORT}
+ExecStart=/path/to/ai-rewriter/scripts/run.sh
 Restart=always
 RestartSec=5
 
@@ -120,11 +121,12 @@ WantedBy=default.target
 **Important:** Replace the following paths:
 - `WorkingDirectory` - Full path to your ai-rewriter directory
 - `EnvironmentFile` - Full path to your `.env` file
-- `ExecStart` - Update the `uv` path based on your installation:
-  - `/usr/bin/uv` (if installed via package manager)
-  - `~/.cargo/bin/uv` (if installed via standalone installer)
+- `ExecStart` - Full path to the run.sh script in your ai-rewriter directory
 
-**Note:** The `python -m uvicorn` syntax is required for `uv run` to properly find the uvicorn module.
+**Development Mode:**
+- Set `ENABLE_RELOAD=true` in your `.env` file to enable auto-reload on code changes
+- The service will automatically restart when you modify Python files
+- Set `ENABLE_RELOAD=false` or remove it for production use (no auto-reload)
 
 4. Reload systemd, enable, and start the service:
 
@@ -150,20 +152,21 @@ Once enabled, the service will **automatically start on login** and run in the b
 
 ### Troubleshooting Systemd Service
 
-**Error: "Unable to locate executable: /usr/local/bin/uv"**
-- Your `uv` is installed at a different location
-- Find the correct path: `which uv`
-- Update `ExecStart` in the service file with the correct path
+**Service fails to start**
+- Check the logs: `journalctl --user -u ai-rewriter.service -n 50`
+- Verify paths in the service file are correct (use absolute paths)
+- Ensure `run.sh` is executable: `chmod +x /path/to/ai-rewriter/scripts/run.sh`
+- Check that `.env` file exists and contains valid configuration
 
-**Error: "Failed to spawn: uvicorn"**
-- Make sure you're using `python -m uvicorn` syntax, not just `uvicorn`
-- Correct: `uv run python -m uvicorn src.main:app ...`
-- Incorrect: `uv run uvicorn src.main:app ...`
+**Auto-reload not working**
+- Verify `ENABLE_RELOAD=true` is set in your `.env` file
+- Restart the service: `systemctl --user restart ai-rewriter.service`
+- Check logs to confirm "Will watch for changes" message appears
 
 **Service fails to start at boot**
-- If using standalone installer (`~/.cargo/bin/uv`), systemd might not find it in the PATH
-- Consider installing via package manager instead: `sudo dnf install uv`
-- Or use absolute path to the venv Python: `ExecStart=/full/path/to/ai-rewriter/.venv/bin/uvicorn src.main:app --host 127.0.0.1 --port ${PORT}`
+- Ensure the service is enabled: `systemctl --user enable ai-rewriter.service`
+- Check that `uv` is installed and accessible
+- If using standalone `uv` installer, consider using package manager: `sudo dnf install uv`
 
 ---
 

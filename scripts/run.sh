@@ -16,5 +16,11 @@ fi
 # Default port if not set
 PORT="${PORT:-8787}"
 
+# Check for --reload flag (either via command line arg or ENABLE_RELOAD env var)
+RELOAD_FLAG=""
+if [[ "$*" == *"--reload"* ]] || [[ "${ENABLE_RELOAD}" == "true" ]]; then
+    RELOAD_FLAG="--reload"
+fi
+
 # Run FastAPI server with uvicorn via uv
-uv run uvicorn src.main:app --reload --host 127.0.0.1 --port "${PORT}"
+uv run python -m uvicorn src.main:app ${RELOAD_FLAG} --host 127.0.0.1 --port "${PORT}"
