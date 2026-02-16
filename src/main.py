@@ -1,7 +1,7 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
 from google import genai
 from .prompts import mode_prompts
+from .security import RewriteRequest, validate_input
 import os
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
@@ -9,18 +9,22 @@ PORT = int(os.environ.get("PORT", "8787"))
 app = FastAPI()
 
 
-class RewriteRequest(BaseModel):
-    text: str
-    mode: str = "default"
-
-
 @app.post("/rewrite")
 def rewrite(req: RewriteRequest):
+    # Validate input for security threats
+    try:
+        validated_text = validate_input(req.text)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Security validation failed: {str(e)}"
+        )
+
+    # Build prompt with validated input
     prompt = f"""
 {mode_prompts.get(req.mode, mode_prompts['default'])}
 
 Message:
-{req.text}
+{validated_text}
 """
     response = client.models.generate_content(
         model="models/gemini-2.5-flash",
