@@ -71,7 +71,15 @@ ENABLE_RELOAD=false  # Set to true for development mode (auto-reload on code cha
 uv sync
 ```
 
-5. Start server:
+5. Install security validators:
+
+```bash
+uv run guardrails hub install hub://guardrails/unusual_prompt hub://guardrails/toxic_language
+```
+
+This installs the AI security validators used to detect prompt injection and toxic content.
+
+6. Start server:
 
 ```bash
 ./scripts/run.sh
@@ -151,6 +159,11 @@ journalctl --user -u ai-rewriter.service -f
 Once enabled, the service will **automatically start on login** and run in the background.
 
 ### Troubleshooting Systemd Service
+
+**ImportError: cannot import name 'UnusualPrompt'**
+- Security validators not installed
+- Run: `uv run guardrails hub install hub://guardrails/unusual_prompt hub://guardrails/toxic_language`
+- Restart service: `systemctl --user restart ai-rewriter.service`
 
 **Service fails to start**
 - Check the logs: `journalctl --user -u ai-rewriter.service -n 50`
