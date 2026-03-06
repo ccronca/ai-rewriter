@@ -9,67 +9,49 @@ Defends against:
 Reference: https://owasp.org/www-project-top-10-for-large-language-model-applications/
 """
 
-from guardrails import Guard
-from guardrails.hub import UnusualPrompt, ToxicLanguage
-from pydantic import BaseModel, field_validator
+import logging
+
+_log = logging.getLogger(__name__)
+_input_guard = None
+_guard_init_attempted = False
 
 
-class RewriteRequest(BaseModel):
-    """Validated request model with security checks."""
+def _get_guard():
+    global _input_guard, _guard_init_attempted
+    if not _guard_init_attempted:
+        _guard_init_attempted = True
+        try:
+            from guardrails import Guard
+            from guardrails.hub import UnusualPrompt, ToxicLanguage
+            from .providers import get_litellm_model
 
-    text: str
-    mode: str = "default"
-
-    @field_validator("text")
-    @classmethod
-    def validate_text_length(cls, v: str) -> str:
-        """Mitigates LLM04 (DoS) by enforcing max length."""
-        if len(v) > 5000:
-            raise ValueError(f"Text too long ({len(v)} chars). Max: 5000")
-        if len(v) < 1:
-            raise ValueError("Text cannot be empty")
-        return v
-
-    @field_validator("mode")
-    @classmethod
-    def validate_mode(cls, v: str) -> str:
-        """Validate mode is allowed."""
-        allowed_modes = ["default", "formal", "short", "friendly", "claude-prompt"]
-        if v not in allowed_modes:
-            raise ValueError(f"Invalid mode: {v}")
-        return v
-
-
-def create_input_guard() -> Guard:
-    """
-    Create input validation guard.
-
-    Validators:
-    - UnusualPrompt: Detects jailbreaking and prompt injection (OWASP LLM01)
-    - ToxicLanguage: Filters harmful content
-    """
-    return Guard().use_many(
-        UnusualPrompt(llm_callable="gemini/gemini-2.5-flash", on_fail="exception"),
-        ToxicLanguage(threshold=0.5, validation_method="sentence", on_fail="exception"),
-    )
-
-
-# Global guard instance
-input_guard = create_input_guard()
+            _input_guard = Guard().use(
+                UnusualPrompt(
+                    llm_callable=get_litellm_model(), on_fail="exception"
+                ),
+                ToxicLanguage(
+                    threshold=0.5, validation_method="sentence", on_fail="exception"
+                ),
+            )
+        except ImportError:
+            _log.warning(
+                "Guardrails hub validators not installed. "
+                "Security validation is disabled. "
+                "Run 'guardrails hub install hub://guardrails/unusual_prompt "
+                "hub://guardrails/toxic_language' to enable."
+            )
+    return _input_guard
 
 
 def validate_input(text: str) -> str:
     """
     Validate input against security threats.
 
-    Args:
-        text: Input text to validate
-
-    Returns:
-        Validated text
-
-    Raises:
-        Exception: If validation fails
+    Returns validated text. Falls back to passthrough if guardrails
+    hub validators are not installed.
     """
-    validated_output = input_guard.validate(text)
+    guard = _get_guard()
+    if guard is None:
+        return text
+    validated_output = guard.validate(text)
     return validated_output.validated_output

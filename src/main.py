@@ -1,36 +1,41 @@
-from fastapi import FastAPI, HTTPException
-from google import genai
-from .prompts import mode_prompts
-from .security import RewriteRequest, validate_input
 import os
 
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+from fastapi import FastAPI, HTTPException
+
+from .models import RewriteRequest
+from .prompts import mode_prompts
+from .providers import ProviderError, generate
+from .security import validate_input
+
 PORT = int(os.environ.get("PORT", "8787"))
+ENABLE_SECURITY = os.environ.get("ENABLE_SECURITY", "true").lower() == "true"
 app = FastAPI()
 
 
 @app.post("/rewrite")
 def rewrite(req: RewriteRequest):
-    # Validate input for security threats
-    try:
-        validated_text = validate_input(req.text)
-    except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"Security validation failed: {str(e)}"
-        )
+    if ENABLE_SECURITY:
+        try:
+            validated_text = validate_input(req.text)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, detail=f"Security validation failed: {str(e)}"
+            )
+    else:
+        validated_text = req.text
 
-    # Build prompt with validated input
     prompt = f"""
 {mode_prompts.get(req.mode, mode_prompts['default'])}
 
 Message:
 {validated_text}
 """
-    response = client.models.generate_content(
-        model="models/gemini-2.5-flash",
-        contents=prompt,
-    )
-    return {"result": response.text.strip()}
+    try:
+        result = generate(prompt)
+    except ProviderError as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e))
+
+    return {"result": result}
 
 
 @app.get("/health")

@@ -11,6 +11,12 @@ dependencies = [
     "uvicorn>=0.40.0",
 ]
 
+[project.optional-dependencies]
+claude = ["anthropic>=0.52.0"]
+grok = ["openai>=1.30.0"]
+ollama = ["openai>=1.30.0"]
+all = ["anthropic>=0.52.0", "openai>=1.30.0"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
