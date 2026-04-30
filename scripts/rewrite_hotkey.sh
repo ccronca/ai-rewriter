@@ -37,9 +37,11 @@ fi
 notify-send "AI Rewriter" "Processing: ${TRUNCATED_TEXT}" -i dialog-information -t 3000
 
 # Call local AI rewriter with timeout
+# Use jq to properly escape JSON (handles newlines, quotes, special chars)
+PAYLOAD=$(jq -n --arg text "${TEXT}" --arg mode "default" '{text: $text, mode: $mode}')
 if ! RESULT=$(curl -s --max-time 30 "http://127.0.0.1:${PORT}/rewrite" \
     -H "Content-Type: application/json" \
-    -d "{\"text\":\"${TEXT}\",\"mode\":\"friendly\"}" 2>&1); then
+    -d "${PAYLOAD}" 2>&1); then
     notify-send "AI Rewriter" "Failed to connect to server. Is it running?" -i dialog-error -u critical
     exit 1
 fi
