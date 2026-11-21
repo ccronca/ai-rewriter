@@ -7,6 +7,7 @@ Tests OWASP LLM defenses: prompt injection, DoS, and content filtering.
 import sys
 import types
 
+import logging
 import os
 import pytest
 from src.security import (
@@ -121,11 +122,14 @@ def test_validator_llm_callable_gemini(monkeypatch):
     assert "OPENAI_API_KEY" not in os.environ
 
 
-def test_guard_disabled_without_any_key(monkeypatch):
+def test_guard_disabled_without_any_key(monkeypatch, caplog):
     _fake_hub(monkeypatch)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("ENMAAS_KEY", raising=False)
-    assert _create_input_guard() is None
+    with caplog.at_level(logging.WARNING):
+        assert _create_input_guard() is None
+    assert "KeyError" in caplog.text
+    assert "ENMAAS_KEY" in caplog.text
 
 
 def test_guard_built_with_enmaas_key(monkeypatch):
@@ -152,3 +156,12 @@ class TestValidInput:
     def test_professional_request(self):
         text = "Please make this email more professional for my manager"
         assert validate_input(text) == text
+
+
+_OPENAI_KEYS_AT_IMPORT = {k for k in os.environ if k.startswith("OPENAI_")}
+
+
+def test_validator_env_writes_do_not_leak_between_tests():
+    # _validator_llm_callable force-writes OPENAI_* vars; the conftest
+    # snapshot fixture must remove them again after each test.
+    assert {k for k in os.environ if k.startswith("OPENAI_")} == _OPENAI_KEYS_AT_IMPORT

@@ -79,8 +79,10 @@ def _create_input_guard():
         )
         logger.info("Guardrails Hub validators enabled (LLM01 + toxic content)")
         return guard
-    except (ImportError, Exception) as e:
-        logger.warning(f"Guardrails Hub validators not available, skipping: {e}")
+    except Exception as e:
+        logger.warning(
+            f"Guardrails Hub validators not available, skipping: {type(e).__name__}: {e}"
+        )
         return None
 
 

@@ -26,3 +26,12 @@ def test_rewrite_invalid_mode_422(monkeypatch):
     client = TestClient(src.main.app)
     response = client.post("/rewrite", json={"text": "hi", "mode": "bogus"})
     assert response.status_code == 422
+
+
+def test_rewrite_returns_503_when_no_provider_configured(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("ENMAAS_KEY", raising=False)
+    client = TestClient(src.main.app)
+    response = client.post("/rewrite", json={"text": "hi", "mode": "default"})
+    assert response.status_code == 503
+    assert "ENMAAS_KEY" in response.json()["detail"]

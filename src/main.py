@@ -55,7 +55,11 @@ def rewrite(req: RewriteRequest):
 Message:
 {validated_text}
 """
-    response = complete(prompt)
+    try:
+        response = complete(prompt)
+    except RuntimeError as e:
+        # Missing provider config is a setup problem, not a bad request
+        raise HTTPException(status_code=503, detail=str(e)) from e
     return {"result": response}
 
 
