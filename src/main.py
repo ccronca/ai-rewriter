@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from google import genai
+from .llm import complete
 from .prompts import mode_prompts
 from .security import RewriteRequest, validate_input
 import os
@@ -13,7 +14,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 PORT = int(os.environ.get("PORT", "8787"))
 app = FastAPI()
 
@@ -25,7 +25,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     logger.error(f"Validation error for request: {body.decode()[:200]}")
     logger.error(f"Validation errors: {exc.errors()}")
     return JSONResponse(
-        status_code=422, content={"detail": exc.errors(), "body": body.decode()[:200]}
+        status_code=422,
+        content={"detail": jsonable_encoder(exc.errors()), "body": body.decode()[:200]},
     )
 
 
@@ -54,11 +55,8 @@ def rewrite(req: RewriteRequest):
 Message:
 {validated_text}
 """
-    response = client.models.generate_content(
-        model="models/gemini-2.5-flash",
-        contents=prompt,
-    )
-    return {"result": response.text.strip()}
+    response = complete(prompt)
+    return {"result": response}
 
 
 @app.get("/health")
