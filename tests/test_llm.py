@@ -32,14 +32,14 @@ def _fake_openai(monkeypatch, built, content):
 def test_enmaas_used_when_no_gemini_key(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("ENMAAS_KEY", "k")
+    monkeypatch.setenv("ENMAAS_BASE_URL", "https://gw.example/v1")
     built = []
     _fake_openai(monkeypatch, built, content=" out ")
 
     assert llm.complete("hi") == "out"
 
     client = built[0]
-    assert client.init_kwargs == {"base_url": llm.ENMAAS_BASE_URL, "api_key": "k"}
-    assert client.init_kwargs["base_url"] == "https://api.enmaas.devshift.net/v1"
+    assert client.init_kwargs == {"base_url": "https://gw.example/v1", "api_key": "k"}
     assert client.create_kwargs["model"] == "rits/zai-org/glm-5-3"
     assert client.create_kwargs["messages"] == [{"role": "user", "content": "hi"}]
 
@@ -79,9 +79,18 @@ def test_missing_all_keys_raises(monkeypatch):
         llm.complete("hi")
 
 
+def test_enmaas_key_without_base_url_raises(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("ENMAAS_KEY", "k")
+    monkeypatch.delenv("ENMAAS_BASE_URL", raising=False)
+    with pytest.raises(RuntimeError, match="ENMAAS_BASE_URL"):
+        llm.complete("hi")
+
+
 def test_none_content_returns_empty(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.setenv("ENMAAS_KEY", "k")
+    monkeypatch.setenv("ENMAAS_BASE_URL", "https://gw.example/v1")
     built = []
     _fake_openai(monkeypatch, built, content=None)
 

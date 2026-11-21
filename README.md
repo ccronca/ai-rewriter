@@ -61,6 +61,7 @@ nano .env  # Edit with your EnMaaS API key and preferred port
 Edit `.env`:
 ```bash
 ENMAAS_KEY=your_actual_enmaas_key_here
+ENMAAS_BASE_URL=your_enmaas_base_url_here  # Required with ENMAAS_KEY
 # GEMINI_API_KEY=your_gemini_key_here  # Optional: use Gemini instead of EnMaaS
 PORT=8787  # Optional, defaults to 8787
 ENABLE_RELOAD=false  # Set to true for development mode (auto-reload on code changes)

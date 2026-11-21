@@ -57,7 +57,7 @@ def _validator_llm_callable() -> str:
     if os.environ.get("GEMINI_API_KEY"):
         return "gemini/gemini-2.5-flash"
     os.environ["OPENAI_API_KEY"] = os.environ["ENMAAS_KEY"]
-    os.environ["OPENAI_API_BASE"] = "https://api.enmaas.devshift.net/v1"
+    os.environ["OPENAI_API_BASE"] = os.environ["ENMAAS_BASE_URL"]
     return "openai/rits/zai-org/glm-5-3"
 
 

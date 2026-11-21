@@ -15,7 +15,7 @@ hard dependency.
 
 ## Goals
 
-- Default provider: EnMaaS — base URL `https://api.enmaas.devshift.net/v1`
+- Default provider: EnMaaS — base URL from the `ENMAAS_BASE_URL` env var
   (OpenAI Chat Completions dialect), model `rits/zai-org/glm-5-3`, key from
   `ENMAAS_KEY`.
 - Gemini is used when `GEMINI_API_KEY` is set (model unchanged:

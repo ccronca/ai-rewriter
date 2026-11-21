@@ -5,7 +5,6 @@ import os
 from google import genai
 from openai import OpenAI
 
-ENMAAS_BASE_URL = "https://api.enmaas.devshift.net/v1"
 ENMAAS_MODEL = "rits/zai-org/glm-5-3"
 
 
@@ -18,8 +17,13 @@ def complete(prompt: str) -> str:
         )
         return (response.text or "").strip()
     if os.environ.get("ENMAAS_KEY"):
+        base_url = os.environ.get("ENMAAS_BASE_URL")
+        if not base_url:
+            raise RuntimeError(
+                "EnMaaS selected (ENMAAS_KEY is set) but ENMAAS_BASE_URL is not configured"
+            )
         # shortcut: client built per call, fine at clipboard-rewrite volume; cache if this serves concurrent traffic
-        client = OpenAI(base_url=ENMAAS_BASE_URL, api_key=os.environ["ENMAAS_KEY"])
+        client = OpenAI(base_url=base_url, api_key=os.environ["ENMAAS_KEY"])
         response = client.chat.completions.create(
             model=ENMAAS_MODEL,
             messages=[{"role": "user", "content": prompt}],

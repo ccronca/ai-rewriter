@@ -4,7 +4,7 @@
 
 **Goal:** Make EnMaaS the default LLM provider, keep Gemini as an optional path gated on `GEMINI_API_KEY`, and stop requiring any key at import time.
 
-**Architecture:** One `complete(prompt)` helper in new `src/llm.py` picks the provider per call: Gemini via google-genai when `GEMINI_API_KEY` is set, else EnMaaS via the openai SDK (base URL `https://api.enmaas.devshift.net/v1`, model `rits/zai-org/glm-5-3`). The Guardrails `UnusualPrompt` validator takes a litellm model string only (verified from its source), so it gets a provider-aware string with `OPENAI_API_KEY`/`OPENAI_API_BASE` set for the EnMaaS case. Both paths verified live against the gateway.
+**Architecture:** One `complete(prompt)` helper in new `src/llm.py` picks the provider per call: Gemini via google-genai when `GEMINI_API_KEY` is set, else EnMaaS via the openai SDK (base URL from the `ENMAAS_BASE_URL` env var, model `rits/zai-org/glm-5-3`). The Guardrails `UnusualPrompt` validator takes a litellm model string only (verified from its source), so it gets a provider-aware string with `OPENAI_API_KEY`/`OPENAI_API_BASE` set for the EnMaaS case. Both paths verified live against the gateway.
 
 **Tech Stack:** Python 3.14, FastAPI, google-genai (existing, kept), openai SDK (already in uv.lock via litellm; becomes a direct dependency), pytest, guardrails-ai 0.8.1 + litellm 1.81.
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- EnMaaS base URL (verbatim): `https://api.enmaas.devshift.net/v1`
+- EnMaaS base URL: configured via the `ENMAAS_BASE_URL` env var (moved out of the code)
 - EnMaaS model: `rits/zai-org/glm-5-3` (openai SDK) / `openai/rits/zai-org/glm-5-3` (litellm string)
 - EnMaaS key env var: `ENMAAS_KEY` (user's name — NOT `ENMAAS_API_KEY`)
 - Gemini unchanged: `models/gemini-2.5-flash` (google-genai) / `gemini/gemini-2.5-flash` (litellm)
@@ -38,7 +38,7 @@
 - Modify: `pyproject.toml`
 
 **Interfaces:**
-- Produces: `complete(prompt: str) -> str`; constants `ENMAAS_BASE_URL = "https://api.enmaas.devshift.net/v1"`, `ENMAAS_MODEL = "rits/zai-org/glm-5-3"`; module-level `OpenAI` and `genai` names (tests monkeypatch `src.llm.OpenAI` / `src.llm.genai.Client`).
+- Produces: `complete(prompt: str) -> str`; constant `ENMAAS_MODEL = "rits/zai-org/glm-5-3"` (base URL via `ENMAAS_BASE_URL` env var); module-level `OpenAI` and `genai` names (tests monkeypatch `src.llm.OpenAI` / `src.llm.genai.Client`).
 
 - [ ] **Step 1: Write failing tests** in `tests/test_llm.py` (monkeypatch fakes; no network):
   - `test_enmaas_used_when_no_gemini_key` — delenv `GEMINI_API_KEY`, setenv `ENMAAS_KEY=k`; fake `OpenAI` records init + create kwargs; assert `complete("hi") == "out"`, init `base_url == ENMAAS_BASE_URL`, init `api_key == "k"`, create `model == "rits/zai-org/glm-5-3"`, message content `" out "` → returned stripped `"out"`
@@ -64,7 +64,7 @@
 - [ ] **Step 1: Write failing tests**:
   - `tests/test_main.py::test_imports_without_any_key` — delenv both keys, `importlib.reload(src.main)` must not raise (regression test for the import crash)
   - `tests/test_main.py::test_rewrite_returns_result` — monkeypatch `src.main.complete` → `"cleaned"`; `fastapi.testclient.TestClient` POST `/rewrite` `{"text": "hi", "mode": "default"}` → 200 `{"result": "cleaned"}`; invalid mode still 422
-  - `tests/test_security.py::test_validator_llm_callable_enmaas` — delenv `GEMINI_API_KEY`, setenv `ENMAAS_KEY=k`, delenv `OPENAI_API_KEY`/`OPENAI_API_BASE`; `_validator_llm_callable()` returns `"openai/rits/zai-org/glm-5-3"` and sets `OPENAI_API_KEY=k`, `OPENAI_API_BASE=https://api.enmaas.devshift.net/v1`
+  - `tests/test_security.py::test_validator_llm_callable_enmaas` — delenv `GEMINI_API_KEY`, setenv `ENMAAS_KEY=k`, delenv `OPENAI_API_KEY`/`OPENAI_API_BASE`; `_validator_llm_callable()` returns `"openai/rits/zai-org/glm-5-3"` and sets `OPENAI_API_KEY=k`, `OPENAI_API_BASE=$ENMAAS_BASE_URL`
   - `tests/test_security.py::test_validator_llm_callable_gemini` — setenv `GEMINI_API_KEY=g`; returns `"gemini/gemini-2.5-flash"`, leaves `OPENAI_*` unset
   - Update the three `skipif` conditions in `tests/test_security.py` to run when `GEMINI_API_KEY` **or** `ENMAAS_KEY` is set
 - [ ] **Step 2:** `uv run pytest -v` → new tests FAIL
