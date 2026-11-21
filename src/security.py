@@ -13,6 +13,8 @@ Reference: https://owasp.org/www-project-top-10-for-large-language-model-applica
 """
 
 import logging
+import os
+
 from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,21 @@ class RewriteRequest(BaseModel):
         return v
 
 
+def _validator_llm_callable() -> str:
+    """
+    Pick the litellm model string for the UnusualPrompt validator.
+
+    Gemini when GEMINI_API_KEY is set; otherwise EnMaaS, pointing litellm
+    at the gateway via OPENAI_API_KEY/OPENAI_API_BASE (force-set: a stale
+    user OPENAI_* would misroute litellm).
+    """
+    if os.environ.get("GEMINI_API_KEY"):
+        return "gemini/gemini-2.5-flash"
+    os.environ["OPENAI_API_KEY"] = os.environ["ENMAAS_KEY"]
+    os.environ["OPENAI_API_BASE"] = "https://api.enmaas.devshift.net/v1"
+    return "openai/rits/zai-org/glm-5-3"
+
+
 def _create_input_guard():
     """
     Try to create a Guardrails input guard with Hub validators.
@@ -55,7 +72,7 @@ def _create_input_guard():
         from guardrails.hub import UnusualPrompt, ToxicLanguage
 
         guard = Guard().use_many(
-            UnusualPrompt(llm_callable="gemini/gemini-2.5-flash", on_fail="exception"),
+            UnusualPrompt(llm_callable=_validator_llm_callable(), on_fail="exception"),
             ToxicLanguage(
                 threshold=0.5, validation_method="sentence", on_fail="exception"
             ),

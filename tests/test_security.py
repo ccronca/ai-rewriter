@@ -6,13 +6,18 @@ Tests OWASP LLM defenses: prompt injection, DoS, and content filtering.
 
 import os
 import pytest
-from src.security import validate_input, RewriteRequest
+from src.security import (
+    validate_input,
+    RewriteRequest,
+    _validator_llm_callable,
+    _input_guard,
+)
 from pydantic import ValidationError
 
 
 @pytest.mark.skipif(
-    not os.getenv("GEMINI_API_KEY"),
-    reason="Requires GEMINI_API_KEY for UnusualPrompt validator",
+    _input_guard is None,
+    reason="Requires Guardrails Hub validators and an LLM provider key",
 )
 class TestPromptInjection:
     """OWASP LLM01: Prompt Injection attacks."""
@@ -27,8 +32,8 @@ class TestPromptInjection:
 
 
 @pytest.mark.skipif(
-    not os.getenv("GEMINI_API_KEY"),
-    reason="Requires GEMINI_API_KEY for ToxicLanguage validator",
+    _input_guard is None,
+    reason="Requires Guardrails Hub validators and an LLM provider key",
 )
 class TestToxicContent:
     """Toxic content filtering."""
@@ -68,8 +73,27 @@ class TestModeValidation:
             assert req.mode == mode
 
 
+def test_validator_llm_callable_enmaas(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("ENMAAS_KEY", "k")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+    assert _validator_llm_callable() == "openai/rits/zai-org/glm-5-3"
+    assert os.environ["OPENAI_API_KEY"] == "k"
+    assert os.environ["OPENAI_API_BASE"] == "https://api.enmaas.devshift.net/v1"
+
+
+def test_validator_llm_callable_gemini(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_BASE", raising=False)
+    assert _validator_llm_callable() == "gemini/gemini-2.5-flash"
+    assert "OPENAI_API_KEY" not in os.environ
+
+
 @pytest.mark.skipif(
-    not os.getenv("GEMINI_API_KEY"), reason="Requires GEMINI_API_KEY for validators"
+    _input_guard is None,
+    reason="Requires Guardrails Hub validators and an LLM provider key",
 )
 class TestValidInput:
     """Legitimate inputs should pass validation."""
