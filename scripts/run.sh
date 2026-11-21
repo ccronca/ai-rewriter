@@ -18,7 +18,7 @@ PORT="${PORT:-8787}"
 
 # Check for --reload flag (either via command line arg or ENABLE_RELOAD env var)
 RELOAD_FLAG=""
-if [[ "$*" == *"--reload"* ]] || [[ "${ENABLE_RELOAD}" == "true" ]]; then
+if [[ "$*" == *"--reload"* ]] || [[ "${ENABLE_RELOAD:-}" == "true" ]]; then
     RELOAD_FLAG="--reload"
 fi
 
