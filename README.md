@@ -9,7 +9,7 @@ Runs as a background service with clipboard-based hotkey integration.
 - Clipboard-based workflow with desktop notifications
 - Multiple modes for different communication contexts
 - Runs as background service (auto-start on login)
-- Privacy-focused: runs locally, only API calls go to Gemini
+- Privacy-focused: runs locally, only API calls go to the LLM provider (EnMaaS by default, Gemini optional)
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Runs as a background service with clipboard-based hotkey integration.
 - `wl-paste` and `wl-copy` (for Wayland clipboard) or `xclip` (for X11)
 - `jq` - JSON processor
 - `notify-send` - Desktop notifications (usually pre-installed on GNOME/KDE)
-- Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
+- EnMaaS API key (get one via the Atlas onboarding flow; requires corporate VPN). Optional: a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) to use Gemini instead
 
 ## Setup
 
@@ -55,12 +55,13 @@ cd ai-rewriter
 
 ```bash
 cp .env.example .env
-nano .env  # Edit with your Gemini API key and preferred port
+nano .env  # Edit with your EnMaaS API key and preferred port
 ```
 
 Edit `.env`:
 ```bash
-GEMINI_API_KEY=your_actual_api_key_here
+ENMAAS_KEY=your_actual_enmaas_key_here
+# GEMINI_API_KEY=your_gemini_key_here  # Optional: use Gemini instead of EnMaaS
 PORT=8787  # Optional, defaults to 8787
 ENABLE_RELOAD=false  # Set to true for development mode (auto-reload on code changes)
 ```

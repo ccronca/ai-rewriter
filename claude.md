@@ -94,7 +94,8 @@ ai-rewriter/
 
 ## Environment Variables
 
-- `GEMINI_API_KEY` - Required. Google Gemini API key
+- `ENMAAS_KEY` - Default provider. EnMaaS (Red Hat AI gateway) API key
+- `GEMINI_API_KEY` - Optional. Google Gemini API key; takes precedence over EnMaaS when set
 - `PORT` - Optional. Server port (default: 8787)
 
 ## API Design
