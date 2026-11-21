@@ -4,6 +4,9 @@ Security tests for AI Rewriter.
 Tests OWASP LLM defenses: prompt injection, DoS, and content filtering.
 """
 
+import sys
+import types
+
 import os
 import pytest
 from src.security import (
@@ -11,8 +14,34 @@ from src.security import (
     RewriteRequest,
     _validator_llm_callable,
     _input_guard,
+    _create_input_guard,
 )
 from pydantic import ValidationError
+
+
+def _fake_hub(monkeypatch):
+    """Install fake guardrails/guardrails.hub modules; return a kwargs recorder."""
+    recorded = {}
+
+    def unusual_prompt(**kwargs):
+        recorded.update(kwargs)
+        return ("unusual_prompt",)
+
+    def toxic_language(**kwargs):
+        return ("toxic_language",)
+
+    class FakeGuard:
+        def use_many(self, *validators):
+            return ("guard", validators)
+
+    guardrails = types.ModuleType("guardrails")
+    guardrails.Guard = FakeGuard
+    hub = types.ModuleType("guardrails.hub")
+    hub.UnusualPrompt = unusual_prompt
+    hub.ToxicLanguage = toxic_language
+    monkeypatch.setitem(sys.modules, "guardrails", guardrails)
+    monkeypatch.setitem(sys.modules, "guardrails.hub", hub)
+    return recorded
 
 
 @pytest.mark.skipif(
@@ -89,6 +118,22 @@ def test_validator_llm_callable_gemini(monkeypatch):
     monkeypatch.delenv("OPENAI_API_BASE", raising=False)
     assert _validator_llm_callable() == "gemini/gemini-2.5-flash"
     assert "OPENAI_API_KEY" not in os.environ
+
+
+def test_guard_disabled_without_any_key(monkeypatch):
+    _fake_hub(monkeypatch)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("ENMAAS_KEY", raising=False)
+    assert _create_input_guard() is None
+
+
+def test_guard_built_with_enmaas_key(monkeypatch):
+    recorded = _fake_hub(monkeypatch)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.setenv("ENMAAS_KEY", "k")
+    guard = _create_input_guard()
+    assert guard is not None
+    assert recorded["llm_callable"] == "openai/rits/zai-org/glm-5-3"
 
 
 @pytest.mark.skipif(
