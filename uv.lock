@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 
 [[package]]
@@ -10,6 +10,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "google-genai" },
     { name = "guardrails-ai" },
+    { name = "openai" },
     { name = "uvicorn" },
 ]
 
@@ -23,6 +24,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.129.0" },
     { name = "google-genai", specifier = ">=1.63.0" },
     { name = "guardrails-ai", specifier = ">=0.8.1" },
+    { name = "openai", specifier = ">=2.21.0" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
 
